@@ -23,6 +23,11 @@ export function formatMarketCap(value: number | null | undefined): string | null
   return `₹${compactFormatter.format(value)}`;
 }
 
+export function formatCompactCurrency(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return "—";
+  return `₹${compactFormatter.format(value)}`;
+}
+
 export function formatRatio(
   value: number | null | undefined,
   suffix = ""
