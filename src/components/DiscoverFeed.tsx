@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { formatPrice } from "@/lib/format";
 import type { StockDetail } from "@/types/stock";
 
@@ -47,15 +48,30 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
   return Boolean(target.closest("a, button"));
 }
 
+function companySummary(stock: StockDetail): string {
+  if (stock.summary) {
+    const compact = stock.summary.replace(/\s+/g, " ").trim();
+    if (compact.length <= 160) return compact;
+    return `${compact.slice(0, 157).trim()}...`;
+  }
+
+  if (stock.industry && stock.sector) {
+    return `${stock.industry} business in the ${stock.sector} sector.`;
+  }
+
+  if (stock.sector) return `Operates in the ${stock.sector} sector.`;
+  return "Company description unavailable.";
+}
+
 export function DiscoverFeed({ symbols }: DiscoverFeedProps) {
   const [stockOrder, setStockOrder] = useState<string[]>([]);
-  const [visibleCount, setVisibleCount] = useState(1);
+  const [visibleCount, setVisibleCount] = useState(2);
   const [stockCache, setStockCache] = useState<StockCache>({});
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [savedSymbol, setSavedSymbol] = useState<string | null>(null);
   const [showWatchlist, setShowWatchlist] = useState(false);
   const scrollerRef = useRef<HTMLDivElement>(null);
-  const sentinelRef = useRef<HTMLDivElement>(null);
+  const lastCardRef = useRef<HTMLElement | null>(null);
   const lastTapRef = useRef<Record<string, number>>({});
   const inFlightRef = useRef<Set<string>>(new Set());
   const viewedRef = useRef<Set<string>>(new Set());
@@ -73,7 +89,7 @@ export function DiscoverFeed({ symbols }: DiscoverFeedProps) {
     viewedRef.current = viewed;
     setWatchlist(readStoredList(WATCHLIST_KEY));
     setStockOrder(nextOrder);
-    setVisibleCount(1);
+    setVisibleCount(Math.min(2, nextOrder.length));
   }, [symbols]);
 
   const visibleSymbols = useMemo(
@@ -120,28 +136,26 @@ export function DiscoverFeed({ symbols }: DiscoverFeedProps) {
   }, [stockOrder.length]);
 
   useEffect(() => {
-    const sentinel = sentinelRef.current;
     const root = scrollerRef.current;
-    if (!sentinel || !root || stockOrder.length === 0) return;
+    const lastCard = lastCardRef.current;
+    if (!root || !lastCard || visibleCount >= stockOrder.length) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (!entry.isIntersecting) return;
-        observer.unobserve(sentinel);
+        observer.unobserve(lastCard);
         showNextStock();
       },
-      { root, threshold: 0.35 }
+      { root, threshold: 0.15 }
     );
 
-    observer.observe(sentinel);
+    observer.observe(lastCard);
     return () => observer.disconnect();
   }, [showNextStock, stockOrder.length, visibleCount]);
 
   useEffect(() => {
     visibleSymbols.forEach((symbol) => markViewed(symbol));
   }, [markViewed, visibleSymbols]);
-
-  const canLoadMore = visibleCount < stockOrder.length;
 
   const saveToWatchlist = useCallback((symbol: string) => {
     setWatchlist((current) => {
@@ -168,32 +182,34 @@ export function DiscoverFeed({ symbols }: DiscoverFeedProps) {
   }
 
   const watchedSet = useMemo(() => new Set(watchlist), [watchlist]);
+  const reachedEnd = stockOrder.length > 0 && visibleCount >= stockOrder.length;
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-        <div>
-          <h1 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-            Discover
-          </h1>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            One stock at a time. Double tap to save.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setShowWatchlist((open) => !open)}
-          className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-600 transition-colors hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+    <div className="relative h-dvh overflow-hidden">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-3 px-3 pt-[max(0.6rem,env(safe-area-inset-top))] sm:px-4">
+        <Link
+          href="/"
+          className="pointer-events-auto inline-flex items-center gap-1 rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-zinc-700 shadow-sm backdrop-blur-sm dark:bg-zinc-900/90 dark:text-zinc-200"
         >
-          Watchlist {watchlist.length}
-        </button>
+          ← Home
+        </Link>
+        <div className="pointer-events-auto flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowWatchlist((open) => !open)}
+            className="rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-zinc-700 shadow-sm backdrop-blur-sm dark:bg-zinc-900/90 dark:text-zinc-200"
+          >
+            Watchlist {watchlist.length}
+          </button>
+          <ThemeToggle />
+        </div>
       </div>
 
       {showWatchlist && (
-        <div className="mx-auto w-full max-w-2xl px-4 pb-3 sm:px-6">
-          <div className="rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="absolute inset-x-0 top-14 z-30 mx-auto w-[min(100%,32rem)] px-3 sm:px-4">
+          <div className="rounded-xl border border-zinc-200 bg-white/95 p-3 shadow-lg backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-900/95">
             {watchlist.length === 0 ? (
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
                 Double tap a card to save a stock here.
               </p>
             ) : (
@@ -213,68 +229,79 @@ export function DiscoverFeed({ symbols }: DiscoverFeedProps) {
         </div>
       )}
 
-      <div ref={scrollerRef} className="min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto">
-        {visibleSymbols.map((symbol) => {
+      <div
+        ref={scrollerRef}
+        className="h-dvh snap-y snap-mandatory overflow-y-scroll overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {visibleSymbols.map((symbol, index) => {
           const stock = stockCache[symbol];
           const watched = watchedSet.has(symbol);
+          const isLast = index === visibleSymbols.length - 1;
 
           return (
             <section
               key={symbol}
+              ref={isLast ? lastCardRef : undefined}
               onPointerUp={(event) => handleCardTap(symbol, event)}
-              className="mx-auto flex h-full max-w-2xl snap-start snap-always flex-col px-4 py-3 sm:px-6"
+              className="h-dvh w-full snap-start snap-always"
             >
-              <article className="flex min-h-0 flex-1 flex-col justify-between rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+              <article className="mx-auto flex h-full max-w-lg flex-col justify-between px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-14 sm:max-w-xl sm:px-6 sm:pt-16">
                 {stock ? (
                   <>
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <Link
-                          href={`/stock/${encodeURIComponent(stock.symbol)}`}
-                          className="text-2xl font-bold tracking-tight text-zinc-900 transition-colors hover:text-indigo-600 dark:text-zinc-100 dark:hover:text-indigo-300"
-                        >
-                          {stock.name}
-                        </Link>
-                        <p className="mt-1 text-sm font-medium text-indigo-600 dark:text-indigo-400">
-                          {stock.symbol.replace(/\.NS$/, "")}
-                        </p>
+                    <div className="min-h-0">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <Link
+                            href={`/stock/${encodeURIComponent(stock.symbol)}`}
+                            className="block truncate text-lg font-bold leading-tight tracking-tight text-zinc-900 transition-colors hover:text-indigo-600 sm:text-2xl dark:text-zinc-100 dark:hover:text-indigo-300"
+                          >
+                            {stock.name}
+                          </Link>
+                          <p className="mt-0.5 text-xs font-medium text-indigo-600 sm:text-sm dark:text-indigo-400">
+                            {stock.symbol.replace(/\.NS$/, "")}
+                          </p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="text-base font-bold text-zinc-900 sm:text-xl dark:text-zinc-100">
+                            {formatPrice(stock.price)}
+                          </p>
+                          <p className="mt-0.5 text-[10px] text-zinc-500 sm:text-xs dark:text-zinc-400">
+                            Current price
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
-                          {formatPrice(stock.price)}
-                        </p>
-                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                          Current price
-                        </p>
-                      </div>
+
+                      <p className="mt-3 line-clamp-3 text-xs leading-relaxed text-zinc-600 sm:mt-4 sm:text-sm dark:text-zinc-300">
+                        {companySummary(stock)}
+                      </p>
                     </div>
 
-                    <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="grid grid-cols-3 gap-2 sm:gap-3">
                       {[
                         ["PE Ratio", metricValue(stock, "peRatio")],
                         ["ROE", metricValue(stock, "roe")],
-                        ["Debt to Equity", metricValue(stock, "debtToEquity")],
+                        ["Debt / Equity", metricValue(stock, "debtToEquity")],
                       ].map(([label, value]) => (
-                        <div key={label} className="rounded-lg bg-zinc-50 p-4 dark:bg-zinc-800">
-                          <p className="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">
+                        <div key={label} className="rounded-lg bg-white p-2.5 shadow-sm dark:bg-zinc-900 sm:p-4">
+                          <p className="text-[10px] font-medium uppercase leading-tight text-zinc-500 sm:text-xs dark:text-zinc-400">
                             {label}
                           </p>
-                          <p className="mt-2 text-xl font-semibold text-zinc-900 dark:text-zinc-100">
+                          <p className="mt-1 text-sm font-semibold text-zinc-900 sm:mt-2 sm:text-xl dark:text-zinc-100">
                             {value}
                           </p>
                         </div>
                       ))}
                     </div>
 
-                    <div className="rounded-xl bg-indigo-50 p-5 dark:bg-indigo-500/10">
-                      <div className="mb-3 flex items-center justify-between gap-3">
-                        <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">
+                    <div className="rounded-xl bg-indigo-50 p-3 dark:bg-indigo-500/10 sm:p-5">
+                      <div className="mb-2 flex items-center justify-between gap-3 sm:mb-3">
+                        <p className="text-xs font-semibold text-indigo-700 sm:text-sm dark:text-indigo-300">
                           Quick Insight
                         </p>
                         <button
                           type="button"
                           onClick={() => saveToWatchlist(stock.symbol)}
-                          className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border transition-colors ${
+                          className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border transition-colors sm:h-9 sm:w-9 ${
                             watched
                               ? "border-rose-300 bg-rose-50 text-rose-600 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-300"
                               : "border-zinc-200 bg-white text-zinc-500 hover:text-rose-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:text-rose-300"
@@ -287,15 +314,19 @@ export function DiscoverFeed({ symbols }: DiscoverFeedProps) {
                           </svg>
                         </button>
                       </div>
-                      <p className="text-xl font-semibold leading-snug text-zinc-900 dark:text-zinc-100">
+                      <p className="text-base font-semibold leading-snug text-zinc-900 sm:text-xl dark:text-zinc-100">
                         {stock.discoverInsight}
                       </p>
                       {savedSymbol === stock.symbol && (
-                        <p className="mt-3 text-sm font-semibold text-rose-600 dark:text-rose-300">
+                        <p className="mt-2 text-xs font-semibold text-rose-600 sm:mt-3 sm:text-sm dark:text-rose-300">
                           Added to watchlist
                         </p>
                       )}
                     </div>
+
+                    <p className="pb-1 text-center text-[10px] text-zinc-400 sm:text-xs">
+                      {reachedEnd && isLast ? "You have seen all Discover stocks for now." : "Swipe up for the next stock"}
+                    </p>
                   </>
                 ) : (
                   <div className="flex flex-1 items-center justify-center">
@@ -311,26 +342,6 @@ export function DiscoverFeed({ symbols }: DiscoverFeedProps) {
             </section>
           );
         })}
-
-        {canLoadMore ? (
-          <div ref={sentinelRef} className="flex h-24 snap-end items-center justify-center">
-            <button
-              type="button"
-              onClick={showNextStock}
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-400"
-            >
-              Next Stock
-            </button>
-          </div>
-        ) : (
-          stockOrder.length > 0 && (
-            <div className="flex h-24 items-center justify-center px-4">
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                You have seen all Discover stocks for now.
-              </p>
-            </div>
-          )
-        )}
       </div>
     </div>
   );

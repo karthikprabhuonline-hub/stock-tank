@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { DiscoverFeed } from "@/components/DiscoverFeed";
-import { Header } from "@/components/Header";
 import { DISCOVER_STOCKS } from "@/lib/discoverStocks";
 
 export const metadata: Metadata = {
@@ -10,11 +9,8 @@ export const metadata: Metadata = {
 
 export default function DiscoverPage() {
   return (
-    <div className="flex h-dvh flex-col overflow-hidden">
-      <Header />
-      <main className="flex min-h-0 flex-1 flex-col">
-        <DiscoverFeed symbols={DISCOVER_STOCKS} />
-      </main>
-    </div>
+    <main className="h-dvh overflow-hidden bg-zinc-50 dark:bg-zinc-950">
+      <DiscoverFeed symbols={DISCOVER_STOCKS} />
+    </main>
   );
 }
