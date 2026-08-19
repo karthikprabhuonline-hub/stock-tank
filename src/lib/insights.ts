@@ -154,3 +154,49 @@ export function buildStockInsights(
 
   return { verdicts, observations, redFlags };
 }
+
+function lastThreeIncreasing(values: number[]): boolean {
+  if (values.length < 4) return false;
+  const recent = values.slice(-4);
+  return recent[1] > recent[0] && recent[2] > recent[1] && recent[3] > recent[2];
+}
+
+export function buildDiscoverInsight(
+  quarterly: FinancialPoint[],
+  debtToEquity: number | null
+): string {
+  const revenue = numericSeries(quarterly, "revenue");
+  const profit = numericSeries(quarterly, "profit");
+  const latestProfit = profit.at(-1);
+  const highDebt = debtToEquity != null && debtToEquity > 1.5;
+
+  if (latestProfit != null && latestProfit < 0) {
+    return "Latest quarter showed a loss";
+  }
+
+  if (highDebt) {
+    return "High debt levels observed";
+  }
+
+  if (isVolatile(profit)) {
+    return "Profits are volatile";
+  }
+
+  if (lastThreeIncreasing(revenue) || directionFor(revenue) === "Increasing") {
+    return "Revenue growing consistently";
+  }
+
+  if (directionFor(revenue) === "Declining") {
+    return "Revenue has declined recently";
+  }
+
+  if (directionFor(profit) === "Declining") {
+    return "Profits are under pressure";
+  }
+
+  if (directionFor(profit) === "Increasing") {
+    return "Profits are improving";
+  }
+
+  return "Business looks broadly stable";
+}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DiscoverNavLink } from "./DiscoverNavLink";
 import { ThemeToggle } from "./ThemeToggle";
 
 export function Header() {
@@ -14,6 +15,7 @@ export function Header() {
           </span>
         </Link>
         <div className="flex items-center gap-3">
+          <DiscoverNavLink />
           <a
             href="http://tinyurl.com/finfuse"
             target="_blank"

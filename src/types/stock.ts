@@ -61,6 +61,7 @@ export interface StockDetail {
   verdicts: StockObservation[];
   observations: StockObservation[];
   redFlags: StockObservation[];
+  discoverInsight: string;
   holdings: HoldingInfo;
 }
 
