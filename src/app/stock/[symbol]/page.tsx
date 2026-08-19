@@ -95,6 +95,7 @@ export default async function StockPage({ params }: StockPageProps) {
             ["Financials", "#financials"],
             ["Trends", "#trends"],
             ["Insights", "#insights"],
+            ["Discover", "/discover"],
           ].map(([label, href]) => (
             <a
               key={href}

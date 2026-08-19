@@ -1,6 +1,6 @@
 import YahooFinance from "yahoo-finance2";
 import type { ChartPeriod, ChartPoint, FinancialPoint, StockDetail, StockSearchResult } from "@/types/stock";
-import { buildStockInsights, buildTrendInsights } from "./insights";
+import { buildDiscoverInsight, buildStockInsights, buildTrendInsights } from "./insights";
 import { buildMetrics } from "./metrics";
 import { formatMarketCap } from "./format";
 
@@ -183,6 +183,7 @@ export async function getStockDetail(symbol: string): Promise<StockDetail> {
     verdicts: stockInsights.verdicts,
     observations: stockInsights.observations,
     redFlags: stockInsights.redFlags,
+    discoverInsight: buildDiscoverInsight(quarterly, debtToEquity),
     holdings: {
       promoterHolding: null,
       publicHolding: null,

@@ -29,6 +29,14 @@ export default function HomePage() {
             >
               Learn long-term investing with FinFuse
             </a>
+            <div className="mb-8">
+              <Link
+                href="/discover"
+                className="inline-flex items-center rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+              >
+                Open Discover Feed
+              </Link>
+            </div>
             <SearchBar autoFocus size="large" />
             <p className="mt-3 text-xs text-zinc-400 dark:text-zinc-500">
               Tip: Type a name like &ldquo;Reliance&rdquo; or ticker like &ldquo;TCS&rdquo;
